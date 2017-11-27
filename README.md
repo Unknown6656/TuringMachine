@@ -73,7 +73,7 @@ An example turing configuration for the following image could be:
 
 %charset _ x 0 1
 %blank _
-%memory 0001
+%memory 000101101000
 
 > 0
 1
