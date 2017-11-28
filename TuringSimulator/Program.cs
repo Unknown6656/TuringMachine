@@ -1,17 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using System.IO;
+using System;
 
 namespace TuringMachine
 {
     public static class Program
     {
+        private const int SCNT = 20;
+        private const int CNT = SCNT * 2 + 1;
+        private static readonly List<(string, long, TuringState<ulong, char>)> history = new List<(string, long, TuringState<ulong, char>)>();
+
+
         public static void Main(string[] args)
         {
+            Console.ForegroundColor = ConsoleColor.White;
+
             try
             {
                 var conf = StringTuringMachineConfiguration.FromReadableConfiguration(File.ReadAllText(args[0]));
@@ -44,7 +49,22 @@ namespace TuringMachine
 
         private static void DisplayDebug(StringTuringMachineConfiguration conf, DeterministicTuringMachine<char> tm)
         {
-            Console.WriteLine($"\nThe turing machine halted and {(tm.State == TuringState.HaltedAccept ? "ACCEPTED" : "REJECTED")} the input '{conf.InitialMemoryLayout}'.");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write($"\nThe turing machine halted and ");
+
+            if (tm.State == TuringState.HaltedAccept)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("ACCEPTED");
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write("REJECTED");
+            }
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine($" the input '{conf.InitialMemoryLayout}'.");
             Console.WriteLine($"-------------------------------------------- DEBUG DATA --------------------------------------------");
             Console.WriteLine($"Configuration (bytes):");
 
@@ -60,25 +80,48 @@ namespace TuringMachine
             }
 
             Console.WriteLine($"\nConfiguration (readable):");
+            Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine(string.Join("\n", from l in conf.GenerateReadableConfiguration().Split('\n') select "    " + l));
+            Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine($"History:\n");
 
-            
+            int i = 0;
+
+            foreach (var frame in history)
+            {
+                Console.Write($"[{i:x8}] {frame.Item3.ID,3}:   .....{frame.Item1.Substring(0, SCNT)}");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write(frame.Item1[SCNT]);
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"{frame.Item1.Substring(SCNT + 1, SCNT)}.....");
+
+                ++i;
+            }
+
             Console.WriteLine($"----------------------------------------------------------------------------------------------------");
         }
 
         private static void DisplayTM(DeterministicTuringMachine<char> tm, int yoffs)
         {
-            const int SCNT = 20;
-            const int CNT = SCNT * 2 + 1;
-
             void pline()
             {
                 Console.CursorLeft = 0;
                 Console.Write("    = = = ===@");
 
                 for (int i = 0; i < CNT; ++i)
-                    Console.Write("===@");
+                    if (i == SCNT - 1)
+                    {
+                        Console.Write("===");
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        Console.Write('@');
+                    }
+                    else
+                    {
+                        if (i == SCNT + 1)
+                            Console.ForegroundColor = ConsoleColor.White;
+
+                        Console.Write("===@");
+                    }
 
                 Console.WriteLine("=== = = =");
             }
@@ -89,12 +132,27 @@ namespace TuringMachine
 
             Console.CursorLeft += 4;
             Console.Write("- - - -  | ");
-            
+
+            StringBuilder sb = new StringBuilder();
+
             for (int i = -SCNT; i <= SCNT; ++i)
             {
-                Console.Write(tm.Memory[i + tm.CurrentAddress]);
+                char c = tm.Memory[i + tm.CurrentAddress];
+
+                sb.Append(c);
+
+                if (i == 1)
+                    Console.ForegroundColor = ConsoleColor.White;
+
+                Console.Write(c);
+
+                if (i == -1)
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+
                 Console.Write(" | ");
             }
+
+            history.Add((sb.ToString(), tm.CurrentAddress, tm.CurrentState));
 
             Console.WriteLine(" - - - -");
 
@@ -103,7 +161,9 @@ namespace TuringMachine
             int left = 15 + SCNT * 4;
 
             Console.CursorLeft = left;
+            Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("^");
+            Console.ForegroundColor = ConsoleColor.White;
             Console.CursorLeft = left;
             Console.WriteLine(tm.CurrentState);
 
